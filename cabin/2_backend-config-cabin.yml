@@ -1,0 +1,13 @@
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: backend-config-hmt-cabin-svc
+  namespace: svc
+spec:
+  securityPolicy:
+    name: security-policy-hmt-cabin-svc
+  timeoutSec: 3600
+  sessionAffinity:
+    affinityType: "CLIENT_IP"
+  connectionDraining:
+    drainingTimeoutSec: 20

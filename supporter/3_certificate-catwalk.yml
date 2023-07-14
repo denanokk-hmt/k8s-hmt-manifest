@@ -1,0 +1,8 @@
+apiVersion: networking.gke.io/v1beta1
+kind: ManagedCertificate
+metadata:
+  name: certificate-hmt-catwalk-svc
+  namespace: svc
+spec:
+  domains:
+    - 'svc-hmt-catwalk.bwing.app'

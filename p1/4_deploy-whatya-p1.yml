@@ -1,0 +1,61 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  namespace: svc
+  name: ingress-hmt-p1-svc
+  annotations:
+    #kubernetes.io/ingress.allow-http: "false"
+    kubernetes.io/ingress.global-static-ip-name: svc-hmt-p1-static-ip
+    networking.gke.io/managed-certificates: certificate-hmt-p1-svc
+spec:
+  backend:
+    serviceName: svc-hmt-p1
+    servicePort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: svc
+  name: svc-hmt-p1
+  annotations:
+    beta.cloud.google.com/backend-config: 
+      '{"ports": {"80":"backend-config-hmt-p1-svc"}}'
+spec:
+  selector:
+    app: svc-hmt-p1
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  type: NodePort
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  namespace: svc
+  name: svc-hmt-p1
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: svc-hmt-p1
+    spec:
+      containers: 
+      - name: svc-hmt-p1 
+        image: gcr.io/bwing-230309/hmt/p1/prd/svc:latest
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: google-cloud-key
+          mountPath: /var/secrets/google
+        env:
+        - name: TZ
+          value: Asia/Tokyo
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /var/secrets/google/key.json 
+        ports:
+        - containerPort: 8080
+      volumes:
+      - name: google-cloud-key
+        secret:
+          secretName: p1-iam-key

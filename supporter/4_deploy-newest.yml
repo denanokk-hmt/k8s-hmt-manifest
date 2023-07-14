@@ -1,0 +1,100 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: svc
+  name: svc-hmt-newest
+  annotations:
+    beta.cloud.google.com/backend-config: 
+      '{"ports": {"80":"backend-config-hmt-newest-svc"}}'
+spec:
+  selector:
+    app: svc-hmt-newest
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: svc
+  name: svc-hmt-newest
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: svc-hmt-newest
+  template:
+    metadata:
+      labels:
+        app: svc-hmt-newest
+    spec:
+      containers: 
+      - name: svc-hmt-newest 
+        image: gcr.io/bwing-230309/hmt/newest/prd/svc:4329a45
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: google-cloud-key
+          mountPath: /var/secrets/google
+        env:
+        - name: TZ
+          value: Asia/Tokyo
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /var/secrets/google/key.json 
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: 125Mi
+            cpu: 10m
+          limits:
+            memory: 150Mi
+            cpu: 30m
+      volumes:
+      - name: google-cloud-key
+        secret:
+          secretName: newest-iam-key
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  namespace: svc
+  name: svc-hmt-newest
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: svc-hmt-newest
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu 
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: svc
+  name: ingress-hmt-newest-svc
+  annotations:
+    kubernetes.io/ingress.allow-http: "false"
+    kubernetes.io/ingress.global-static-ip-name: svc-hmt-newest-static-ip
+    networking.gke.io/managed-certificates: certificate-hmt-svc
+spec:
+  defaultBackend:
+    service:
+      name: svc-hmt-newest
+      port:
+        number: 80

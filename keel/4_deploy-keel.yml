@@ -1,0 +1,110 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: svc
+  name: svc-hmt-keel
+  annotations:
+    beta.cloud.google.com/backend-config: 
+      '{"ports": {"80":"backend-config-hmt-keel-svc"}}'
+spec:
+  selector:
+    app: svc-hmt-keel
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: svc
+  name: svc-hmt-keel
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: svc-hmt-keel
+  template:
+    metadata:
+      labels:
+        app: svc-hmt-keel
+    spec:
+      containers: 
+      - name: svc-hmt-keel 
+        image: gcr.io/bwing-230309/hmt/keel/prd/svc:97b5a9d
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: google-cloud-key
+          mountPath: /var/secrets/google
+        - name: shared-data
+          mountPath: /tmp/
+        env:
+        - name: TZ
+          value: Asia/Tokyo
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /var/secrets/google/key.json 
+        ports:
+        - containerPort: 8080
+      - name: flight-recorder 
+        image: gcr.io/bwing-230309/hmt/flight-recorder/prd:442525d
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: google-cloud-key
+          mountPath: /var/secrets/google
+        - name: shared-data
+          mountPath: /tmp/
+        env:
+        - name: TZ
+          value: Asia/Tokyo
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /var/secrets/google/key.json 
+      volumes:
+      - name: google-cloud-key
+        secret:
+          secretName: keel-iam-key
+      - name: shared-data
+        emptyDir: {}
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  namespace: svc
+  name: svc-hmt-keel
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: svc-hmt-keel
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu 
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: svc
+  name: ingress-hmt-keel-svc
+  annotations:
+    kubernetes.io/ingress.allow-http: "false"
+    kubernetes.io/ingress.global-static-ip-name: svc-hmt-keel-static-ip
+    networking.gke.io/managed-certificates: certificate-hmt-svc
+spec:
+  defaultBackend:
+    service:
+      name: svc-hmt-keel
+      port:
+        number: 80

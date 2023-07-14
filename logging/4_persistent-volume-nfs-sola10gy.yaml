@@ -1,0 +1,43 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  namespace: svc
+  name: svc-hmt-gyroscope-sc
+provisioner: filestore.csi.storage.gke.io
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+parameters:
+  tier: standard
+  network: prd3-network
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: svc
+  name: svc-hmt-gyroscope-pv
+  labels:
+    app: svc-hmt-gyroscope-pv
+spec:
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: svc-hmt-gyroscope-sc
+  capacity:
+    storage: 1T
+  accessModes:
+  - ReadWriteMany
+  nfs:
+    path: /prd3_shared
+    server: 172.28.80.122
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: svc
+  name: svc-hmt-gyroscope-pvc
+spec:
+  storageClassName: svc-hmt-gyroscope-sc
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 500Gi

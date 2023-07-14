@@ -1,0 +1,3 @@
+k8s-dns-admin@bwing-230309.iam.gserviceaccount.com
+のようなDSN管理者権限をもたせたJsonキー
+これをクラスターに食わせることで構成したネットワークにアクセスさせる

@@ -1,0 +1,70 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: svc
+  name: svc-hmt-cabin
+  annotations:
+    beta.cloud.google.com/backend-config: 
+      '{"ports": {"80":"backend-config-hmt-cabin-svc"}}'
+spec:
+  selector:
+    app: svc-hmt-cabin
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  type: NodePort
+  externalTrafficPolicy: Local
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: svc
+  name: svc-hmt-cabin
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: svc-hmt-cabin
+  template:
+    metadata:
+      labels:
+        app: svc-hmt-cabin
+    spec:
+      containers: 
+      - name: svc-hmt-cabin 
+        image: gcr.io/bwing-230309/hmt/cabin/prd/svc:2167f5c
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: google-cloud-key
+          mountPath: /var/secrets/google
+        env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /var/secrets/google/key.json 
+        ports:
+        - containerPort: 8080
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 60"]
+      volumes:
+      - name: google-cloud-key
+        secret:
+          secretName: cabin-iam-key
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: svc
+  name: ingress-hmt-cabin-svc
+  annotations:
+    #kubernetes.io/ingress.allow-http: "false"
+    kubernetes.io/ingress.global-static-ip-name: svc-hmt-cabin-static-ip
+    networking.gke.io/managed-certificates: certificate-hmt-cabin-svc
+spec:
+  defaultBackend:
+    service:
+      name: svc-hmt-cabin
+      port:
+        number: 80

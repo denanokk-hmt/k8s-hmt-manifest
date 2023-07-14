@@ -1,0 +1,8 @@
+apiVersion: networking.gke.io/v1beta1
+kind: ManagedCertificate
+metadata:
+  name: certificate-hmt-p1-svc
+  namespace: svc
+spec:
+  domains:
+    - 'svc-hmt-p1.bwing7.app'
